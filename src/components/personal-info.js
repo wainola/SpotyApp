@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import _ from 'lodash';
+import queryString from 'query-string';
 
 class PersonalInfo extends Component{
     constructor(props){
@@ -13,19 +15,40 @@ class PersonalInfo extends Component{
     }
 
     hideAlbums(e){
-        console.log("hide");
-        console.log(this.state);
+        // console.log("hide");
+        // console.log(this.state);
         this.setState({show_albums:false});
     }
 
     onInputSearch(e){
-        console.log(e);
+        if(e === ''){
+            localStorage.removeItem('result_search');
+        }
+        else if (e !== ''){
+            //console.log(e);
+            let parser = queryString.parse(window.location.search);
+            let token = parser.access_token;
+            let url = `https://api.spotify.com/v1/search?q=${e}&type=artist`
+            fetch(url, {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then((response) => response.json())
+            .then(data => {
+                //console.log(data);
+                localStorage.setItem('result_search', JSON.stringify(data));
+            })
+            .catch(rejected => {
+                window.location = 'http://localhost:3000';
+            })
+        }
     }
 
     render(){
 
         //Processing the contents of the list
-        let items = this.state.albumes.items.map((e) => <li key={e.album.id} className="list-group-item">
+        let items = this.props.albumes.items.map((e) => <li key={e.album.id} className="list-group-item">
             <div className="row">
                 <div className="col-md-8">
                     <h4>{e.album.name}</h4>
@@ -36,6 +59,23 @@ class PersonalInfo extends Component{
                 </div>
             </div>
         </li>);
+
+        let search_result = {};
+
+        if(localStorage.getItem('result_search')){
+            search_result = JSON.parse(localStorage.getItem('result_search'));
+        }
+        else{
+            search_result = {data: false};
+        }
+
+        console.log('Search result es...');
+        
+        console.log(search_result);
+        
+
+        // controls the way that a functions is executed: after 300 ms
+        const inputSearch = _.debounce((value) => { this.onInputSearch(value)}, 300);
 
         return(
             <div className="container">
@@ -51,8 +91,12 @@ class PersonalInfo extends Component{
                     </div>
                     :
                     <div>
-                        <div className="input-group">
-                            <input className="form-control" type="text" onChange={event => this.onInputSearch(event.target.value)}/>
+                        <div className="row">
+                            <div className="input-group">
+                                <input className="form-control" type="text" onChange={event => inputSearch(event.target.value)}/>
+                            </div>
+                        </div>
+                        <div className="row">
                         </div>
                     </div>
                 }
